@@ -1,3 +1,6 @@
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Build status](https://ci.appveyor.com/api/projects/status/qoefaq2lgapgt78d?svg=true)](https://ci.appveyor.com/project/ykazakov/minisat4j)
+
 # minisat4j
 
 Accessing the native MiniSat solver through IPASIR interface and its Java binding
