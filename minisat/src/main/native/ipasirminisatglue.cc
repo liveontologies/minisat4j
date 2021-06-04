@@ -4,8 +4,6 @@
 /* This file contains code original developped for the Boolector project,
  * but is also available under the standard IPASIR license.
  */
-#define __STDC_LIMIT_MACROS
-#define __STDC_FORMAT_MACROS
 #include "Solver.h"
 
 #include <cassert>

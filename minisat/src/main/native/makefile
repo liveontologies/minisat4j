@@ -31,8 +31,11 @@ TARGET	?= dlib
 
 export CXX 		?= g++
 export AR		?= ar
+# to build universal binary on MacOS, we switch ar rc -> -static -o  
+AR += -rcs
 export MAKE		?= make
 export CXXFLAGS	?= -Wall -DNDEBUG -O3 -fPIC
+CXXFLAGS += -DVERSION=\"$(VERSION)\"
 # zlib is not provided for mingw32
 ZLIB_VERSION	?= 1.2.11
 
@@ -74,6 +77,9 @@ MROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 ifeq ($(UNAME), Darwin)
   DLIB = lib$(NAME).dylib
+  # build universal "fat" binaries
+  export CXXFLAGS += -arch x86_64 -arch arm64
+  AR = libtool -static -o
 else ifeq ($(UNAME), Linux)
   DLIB = lib$(NAME).so
 else ifeq ($(UNAME), mingw32)
@@ -85,30 +91,35 @@ else
   $(error Platform not supported: $(UNAME))
 endif 
 
+STLIB=$(DIR)/build/release/lib/lib$(NAME).a
+GLUE=$(DIR)/build/release/minisat/core/ipasir$(NAME)glue.o
+
 dlib: $(DLIB)
 
 # shared library for Mac OS
-lib$(NAME).dylib: ipasir$(NAME)glue.o libipasir$(SIG).a 
-	$(VB) $(CXX) $(CXXFLAGS) -g -I. -o $@ -dynamiclib -install_name $@ $^
+lib$(NAME).dylib: $(STLIB)
+	$(VB) $(CXX) $(CXXFLAGS) -g -I. -o $@ -dynamiclib -install_name $@ $(GLUE) $^
 
 # shared library for Linux
-lib$(NAME).so: ipasir$(NAME)glue.o libipasir$(SIG).a
-	$(VB) $(CXX) $(CXXFLAGS) -g -I. -o $@ -shared -Wl,-soname,$@ $^
+lib$(NAME).so: $(STLIB)
+	$(VB) $(CXX) $(CXXFLAGS) -g -I. -o $@ -shared -Wl,-soname,$@ $(GLUE) $^
 	
 # shared library for MinGW
-$(NAME).dll: ipasir$(NAME)glue.o libipasir$(SIG).a	
-	$(VB) $(CXX) $(CXXFLAGS) -static-libgcc -static-libstdc++ -g -I. -o $@ -shared -Wl,--subsystem,windows $^ 		
-
-# static library with the glue code
-libipasir$(SIG).a: lib$(SIG).a ipasir$(NAME)glue.o
-	@#
-	@# merge library and glue code into target
-	@# 
-	$(VB) cp lib$(SIG).a $@
-	$(VB) $(AR) r $@ ipasir$(NAME)glue.o
+$(NAME).dll: $(STLIB)
+	$(VB) $(CXX) $(CXXFLAGS) -static-libgcc -static-libstdc++ -g -I. -o $@ -shared -Wl,--subsystem,windows $(GLUE) $^ 		
 
 # static solver library
-lib$(SIG).a: $(DIR) $(DIR).patch $(LIBS)
+$(STLIB): $(DIR) $(DIR).patch $(LIBS)	
+	@#
+	@# configure and build library
+	@#
+	$(VB) $(MAKE) -C $(DIR) lr
+
+$(DIR): $(DIR).tar.gz
+	@#
+	@# extract library
+	@#
+	$(VB) tar xf $(DIR).tar.gz
 	@#
 	@# apply patch for set_terminate and learn_callback
 	@#
@@ -119,16 +130,14 @@ lib$(SIG).a: $(DIR) $(DIR).patch $(LIBS)
 	$(VB) sed -i.bak -e 's,"\([=|]\),"c [${SIG}] \1,' $(DIR)/minisat/core/Main.cc
 	$(VB) sed -i.bak -e 's,"\([=|]\),"c [${SIG}] \1,' $(DIR)/minisat/core/Solver.cc
 	@#
-	@# configure and build library
+	@# patch archiver
 	@#
-	$(VB) $(MAKE) -C $(DIR) lr
-	$(VB) cp $(DIR)/build/release/lib/lib$(NAME).a $@
-
-$(DIR): $(DIR).tar.gz
+	$(VB) sed -i.bak -e's/$$(AR) -rcs/$$(AR)/' $(DIR)/Makefile
 	@#
-	@# extract library
+	@# copy glue code for ipasir
 	@#
-	$(VB) tar xf $(DIR).tar.gz
+	$(VB) cp ipasir.h $(DIR)/minisat/core/
+	$(VB) cp ipasir$(NAME)glue.cc $(DIR)/minisat/core/
 
 # zlib
 zlib-$(ZLIB_VERSION): zlib-$(ZLIB_VERSION).tar.gz
@@ -142,15 +151,6 @@ zlib-$(ZLIB_VERSION): zlib-$(ZLIB_VERSION).tar.gz
 
 zlib-$(ZLIB_VERSION).tar.gz:
 	$(VB) wget http://zlib.net/zlib-$(ZLIB_VERSION).tar.gz
-
-#-----------------------------------------------------------------------#
-#- LOCAL GLUE RULES ----------------------------------------------------#
-#-----------------------------------------------------------------------#
-
-ipasir$(NAME)glue.o: ipasir$(NAME)glue.cc ipasir.h makefile lib$(SIG).a
-	$(VB) $(CXX) $(CXXFLAGS) \
-	  -DVERSION=\"$(VERSION)\" \
-	  -I$(DIR) -I$(DIR)/minisat/core -c ipasir$(NAME)glue.cc
 
 #-----------------------------------------------------------------------#
 
