@@ -23,8 +23,8 @@ package com.github.liveontologies.ipasir4j.minisat;
  */
 
 import com.github.liveontologies.ipasir4j.IpasirSolver;
-import com.github.liveontologies.ipasir4j.jna.JNAIpasir;
 import com.github.liveontologies.ipasir4j.jna.IpasirNativeSolver;
+import com.github.liveontologies.ipasir4j.jna.JNAIpasir;
 import com.sun.jna.Native;
 
 public class Minisat {
@@ -32,6 +32,16 @@ public class Minisat {
 	private final static JNAIpasir MINISAT_JNA = Native.load("minisat",
 			JNAIpasir.class);
 
+	/**
+	 * @return the name and the version of the incremental SAT solving library
+	 */
+	public static String getSignature() {
+		return MINISAT_JNA.ipasir_signature();
+	}
+
+	/**
+	 * @return a new solver instance
+	 */
 	public static IpasirSolver createSolver() {
 		return new IpasirNativeSolver(MINISAT_JNA);
 	}
