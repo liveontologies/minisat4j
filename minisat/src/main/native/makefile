@@ -37,7 +37,7 @@ export MAKE		?= make
 export CXXFLAGS	?= -Wall -DNDEBUG -O3 -fPIC
 CXXFLAGS += -DVERSION=\"$(VERSION)\"
 # zlib is not provided for mingw32
-ZLIB_VERSION	?= 1.2.11
+ZLIB_VERSION	?= 1.3.1
 
 #-----------------------------------------------------------------------#
 #- REQUIRED TOP RULES --------------------------------------------------#
@@ -150,7 +150,7 @@ zlib-$(ZLIB_VERSION): zlib-$(ZLIB_VERSION).tar.gz
 		
 
 zlib-$(ZLIB_VERSION).tar.gz:
-	$(VB) wget http://zlib.net/zlib-$(ZLIB_VERSION).tar.gz
+	$(VB) wget https://zlib.net/zlib-$(ZLIB_VERSION).tar.gz
 
 #-----------------------------------------------------------------------#
 
